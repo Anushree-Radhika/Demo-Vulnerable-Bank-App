@@ -21,7 +21,7 @@ jobs:
       - name: Run Misconfiguration Scan
         run: semgrep --config=p/secrets --json . > sg.json || true
 
-      - name: Block PR on critical CVEs
+      - name: Block on any vulnerability
         run: |
           CRITICAL=$(cat osv.json | python3 -c "
           import json,sys
@@ -30,7 +30,11 @@ jobs:
           for v in p.get('vulnerabilities',[])
           if v.get('database_specific',{}).get('severity')=='CRITICAL')
           print(n)")
-          if [ $CRITICAL -gt 0 ]; then
-            echo "BLOCKED: $CRITICAL critical CVEs found!"
+          echo "Critical CVEs found: $CRITICAL"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "╔══════════════════════════════════════════╗"
+            echo "║   ❌  SECUREGUARD BLOCKED THIS PUSH      ║"
+            echo "║   Critical vulnerabilities detected!     ║"
+            echo "╚══════════════════════════════════════════╝"
             exit 1
           fi

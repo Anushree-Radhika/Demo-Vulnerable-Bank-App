@@ -1,4 +1,3 @@
-# UCO Bank Production Database Configuration
 database:
   host: prod-db.ucobank.internal
   port: 5432
@@ -7,17 +6,11 @@ database:
   db_name: banking_production
   ssl_mode: disable
 
-# Authentication
-jwt_secret: hardcoded_jwt_secret_key_do_not_use_in_prod
-jwt_expiry: 86400
-
-# External APIs
-payment_api_key: sk-prod-abcdef123456789
+jwt_secret: hardcoded_jwt_secret_key_do_not_use
+api_key: sk-prod-abcdef123456789
 razorpay_secret: rzp_live_secretkey123456
 encryption_key: AES_KEY_1234567890abcdef
 
-# Server config
 server:
   debug: true
   cors_origin: "*"
-  log_level: debug

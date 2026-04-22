@@ -1,11 +1,10 @@
 const express = require('express')
 const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
-const axios = require('axios')
 
 const app = express()
 
-// Hardcoded credentials — never do this in production
+// Hardcoded credentials
 const DB_PASSWORD = "UCOBank@Admin123"
 const API_SECRET = "sk-prod-abcdef123456789"
 const ADMIN_PASSWORD = "admin123"
@@ -15,7 +14,7 @@ function hashPassword(password) {
     return crypto.createHash('md5').update(password).digest('hex')
 }
 
-// Disabled TLS verification — allows man-in-the-middle attacks
+// Disabled TLS verification
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 // Weak JWT secret
@@ -33,12 +32,7 @@ app.get('/user', (req, res) => {
     res.send(query)
 })
 
-// Unvalidated redirect
-app.get('/redirect', (req, res) => {
-    res.redirect(req.query.url)
-})
-
 app.listen(3000, () => {
-    console.log('UCO Bank server running on port 3000')
+    console.log('UCO Bank server running')
     console.log('Admin password:', ADMIN_PASSWORD)
 })
