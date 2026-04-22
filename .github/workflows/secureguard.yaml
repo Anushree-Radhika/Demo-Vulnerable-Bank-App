@@ -12,8 +12,15 @@ jobs:
           curl -L https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
           chmod +x osv-scanner
 
+      - name: Generate lockfile
+        run: |
+          npm install --package-lock-only --ignore-scripts || true
+
       - name: Run CVE Scan
-        run: ./osv-scanner --recursive . --format json > osv.json || true
+        run: |
+          ./osv-scanner --recursive . --format json > osv.json || true
+          echo "OSV scan done"
+          cat osv.json || echo "empty"
 
       - name: Install Semgrep
         run: pip install semgrep
@@ -23,18 +30,37 @@ jobs:
 
       - name: Block on any vulnerability
         run: |
-          CRITICAL=$(cat osv.json | python3 -c "
-          import json,sys
-          d=json.load(sys.stdin)
-          n=sum(1 for r in d.get('results',[]) for p in r.get('packages',[])
-          for v in p.get('vulnerabilities',[])
-          if v.get('database_specific',{}).get('severity')=='CRITICAL')
-          print(n)")
-          echo "Critical CVEs found: $CRITICAL"
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "╔══════════════════════════════════════════╗"
-            echo "║   ❌  SECUREGUARD BLOCKED THIS PUSH      ║"
-            echo "║   Critical vulnerabilities detected!     ║"
-            echo "╚══════════════════════════════════════════╝"
-            exit 1
-          fi
+          python3 << 'EOF'
+          import json, sys
+
+          total = 0
+
+          # Check OSV results
+          try:
+              with open("osv.json") as f:
+                  data = json.load(f)
+              for r in data.get("results", []):
+                  for pkg in r.get("packages", []):
+                      total += len(pkg.get("vulnerabilities", []))
+          except Exception as e:
+              print(f"OSV parse note: {e}")
+
+          # Check Semgrep results
+          try:
+              with open("sg.json") as f:
+                  data = json.load(f)
+              total += len(data.get("results", []))
+          except Exception as e:
+              print(f"Semgrep parse note: {e}")
+
+          print(f"Total vulnerabilities found: {total}")
+
+          if total > 0:
+              print("╔══════════════════════════════════════════╗")
+              print("║   ❌  SECUREGUARD BLOCKED THIS PUSH      ║")
+              print(f"║   {total} vulnerabilities detected!          ║")
+              print("╚══════════════════════════════════════════╝")
+              sys.exit(1)
+          else:
+              print("✅ No vulnerabilities found!")
+          EOF
