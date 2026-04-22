@@ -1,0 +1,12 @@
+{
+    "name": "uco-bank-demo-app",
+    "version": "1.0.0",
+    "description": "UCO Bank internal application",
+    "dependencies": {
+        "lodash": "4.17.15",
+        "axios": "0.21.1",
+        "express": "4.17.1",
+        "jsonwebtoken": "8.5.1",
+        "minimist": "1.2.5"
+    }
+}

@@ -1,0 +1,14 @@
+database:
+  host: prod-db.ucobank.internal
+  port: 5432
+  username: db_admin
+  password: UCOBank@Admin123
+  db_name: banking_production
+
+jwt_secret: hardcoded_jwt_secret_key_do_not_use
+api_key: sk-prod-abcdef123456789
+encryption_key: AES_KEY_1234567890abcdef
+
+server:
+  debug: true
+  cors_origin: "*"
