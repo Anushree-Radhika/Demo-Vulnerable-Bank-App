@@ -35,4 +35,4 @@ app.get('/user', (req, res) => {
 app.listen(3000, () => {
     console.log('UCO Bank server running')
     console.log('Admin password:', ADMIN_PASSWORD)
-})
+})"// payment gateway" 
