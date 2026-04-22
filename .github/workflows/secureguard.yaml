@@ -12,21 +12,90 @@ jobs:
           curl -L https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
           chmod +x osv-scanner
 
-      - name: Generate lockfile
-        run: |
-          npm install --package-lock-only --ignore-scripts || true
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-      - name: Run CVE Scan
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Detect repo type and prepare
+        run: |
+          echo "🔍 Detecting repository type..."
+
+          # Node.js
+          if [ -f "package.json" ]; then
+            echo "✅ Node.js project detected"
+            if [ ! -f "package-lock.json" ]; then
+              echo "Generating package-lock.json..."
+              npm install --package-lock-only --ignore-scripts || true
+            else
+              echo "package-lock.json already exists"
+            fi
+          fi
+
+          # Python
+          if [ -f "requirements.txt" ]; then
+            echo "✅ Python project detected (requirements.txt)"
+          fi
+
+          if [ -f "Pipfile" ]; then
+            echo "✅ Python project detected (Pipfile)"
+          fi
+
+          if [ -f "pyproject.toml" ]; then
+            echo "✅ Python project detected (pyproject.toml)"
+          fi
+
+          # Java
+          if [ -f "pom.xml" ]; then
+            echo "✅ Java Maven project detected"
+          fi
+
+          if [ -f "build.gradle" ]; then
+            echo "✅ Java Gradle project detected"
+          fi
+
+          # Jupyter
+          if ls *.ipynb 1> /dev/null 2>&1; then
+            echo "✅ Jupyter notebooks detected"
+          fi
+
+          # Go
+          if [ -f "go.mod" ]; then
+            echo "✅ Go project detected"
+          fi
+
+          # Ruby
+          if [ -f "Gemfile" ]; then
+            echo "✅ Ruby project detected"
+          fi
+
+          echo "✅ Repo preparation complete"
+
+      - name: Run CVE Scan (OSV-Scanner)
         run: |
           ./osv-scanner --recursive . --format json > osv.json || true
-          echo "OSV scan done"
-          cat osv.json || echo "empty"
+          echo "CVE scan complete"
 
       - name: Install Semgrep
         run: pip install semgrep
 
-      - name: Run Misconfiguration Scan
-        run: semgrep --config=p/secrets --json . > sg.json || true
+      - name: Run Misconfiguration Scan (Semgrep)
+        run: |
+          semgrep --config=p/secrets \
+                  --config=p/owasp-top-ten \
+                  --json . > sg.json || true
+          echo "Misconfig scan complete"
 
       - name: Block on any vulnerability
         run: |
@@ -34,33 +103,42 @@ jobs:
           import json, sys
 
           total = 0
+          cve_count = 0
+          misconfig_count = 0
 
-          # Check OSV results
+          # Parse OSV results
           try:
               with open("osv.json") as f:
                   data = json.load(f)
               for r in data.get("results", []):
                   for pkg in r.get("packages", []):
-                      total += len(pkg.get("vulnerabilities", []))
+                      count = len(pkg.get("vulnerabilities", []))
+                      cve_count += count
+                      total += count
           except Exception as e:
-              print(f"OSV parse note: {e}")
+              print(f"OSV note: {e}")
 
-          # Check Semgrep results
+          # Parse Semgrep results
           try:
               with open("sg.json") as f:
                   data = json.load(f)
-              total += len(data.get("results", []))
+              misconfig_count = len(data.get("results", []))
+              total += misconfig_count
           except Exception as e:
-              print(f"Semgrep parse note: {e}")
+              print(f"Semgrep note: {e}")
 
-          print(f"Total vulnerabilities found: {total}")
+          print(f"CVEs found:            {cve_count}")
+          print(f"Misconfigurations:     {misconfig_count}")
+          print(f"Total vulnerabilities: {total}")
 
           if total > 0:
+              print("")
               print("╔══════════════════════════════════════════╗")
               print("║   ❌  SECUREGUARD BLOCKED THIS PUSH      ║")
               print(f"║   {total} vulnerabilities detected!          ║")
+              print("║   Fix all issues before merging          ║")
               print("╚══════════════════════════════════════════╝")
               sys.exit(1)
           else:
-              print("✅ No vulnerabilities found!")
+              print("✅ No vulnerabilities found — safe to merge!")
           EOF
